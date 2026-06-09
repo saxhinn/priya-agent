@@ -1,4 +1,4 @@
-# Priya — AI Outbound Voice Agent for Shelar TVS
+# Priya — AI Outbound Voice Agent 
 
 Priya is an automated AI voice calling agent that:
 - Auto-calls Meta ad leads via **Exotel**
