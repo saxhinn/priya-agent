@@ -1,0 +1,168 @@
+{
+  "name": "Priya — Shelar TVS Auto Caller",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1o7521binEtS76d-DMmbQ7ItNJbwSUyXPRlUmbFkLPFw",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "priya_call_queue",
+          "mode": "name"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [-1200, 200],
+      "id": "trigger_new_lead",
+      "name": "New Lead Row",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "PLACEHOLDER_GSHEET_CRED_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clean and validate the lead row\nconst raw = $input.first().json;\n\n// Strip 'p:' prefix from phone, ensure +91 format\nlet phone = (raw.phone || '').replace(/^p:/i, '').replace(/\\s+/g, '');\nif (!phone) {\n  // skip — no phone\n  return [];\n}\nif (!phone.startsWith('+')) {\n  // assume Indian number, prepend +91 if 10-digit\n  if (phone.length === 10) phone = '+91' + phone;\n  else if (phone.length === 11 && phone.startsWith('0')) phone = '+91' + phone.slice(1);\n  else if (phone.length === 12 && phone.startsWith('91')) phone = '+' + phone;\n  else phone = '+' + phone;\n}\n\n// Validate Indian mobile (12 digits after +)\nif (!/^\\+\\d{10,13}$/.test(phone)) {\n  // bad phone, skip\n  return [];\n}\n\nreturn [{\n  json: {\n    lead_id: raw.lead_id,\n    phone: phone,\n    customer_name: (raw.full_name || '').trim(),\n    bike: raw.bike || '',\n    branch: raw.branch || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 200],
+      "id": "clean_lead",
+      "name": "Clean & Validate Lead"
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-720, 200],
+      "id": "wait_5_min",
+      "name": "Wait 5 minutes"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.exotel.com/v1/Accounts/shelartvs1/Calls/connect.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "CallerId",
+              "value": "09513886363"
+            },
+            {
+              "name": "Url",
+              "value": "=http://my.exotel.com/shelartvs1/exoml/start_voice/1255817?customer_name={{ encodeURIComponent($json.customer_name) }}&bike={{ encodeURIComponent($json.bike) }}&branch={{ encodeURIComponent($json.branch) }}"
+            },
+            {
+              "name": "CallType",
+              "value": "trans"
+            },
+            {
+              "name": "TimeLimit",
+              "value": "180"
+            },
+            {
+              "name": "TimeOut",
+              "value": "30"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-480, 200],
+      "id": "trigger_exotel_call",
+      "name": "Trigger Exotel Call",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "PLACEHOLDER_EXOTEL_CRED_ID",
+          "name": "Exotel API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log dial result for visibility — for audit only\nconst resp = $input.first().json;\nconst lead = $('Clean & Validate Lead').first().json;\nreturn [{\n  json: {\n    phone: lead.phone,\n    customer_name: lead.customer_name,\n    bike: lead.bike,\n    branch: lead.branch,\n    exotel_response: resp,\n    dialed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 200],
+      "id": "log_dial",
+      "name": "Log Dial Attempt"
+    }
+  ],
+  "connections": {
+    "New Lead Row": {
+      "main": [
+        [
+          {
+            "node": "Clean & Validate Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & Validate Lead": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 minutes": {
+      "main": [
+        [
+          {
+            "node": "Trigger Exotel Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Exotel Call": {
+      "main": [
+        [
+          {
+            "node": "Log Dial Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

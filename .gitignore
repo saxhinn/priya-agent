@@ -1,0 +1,38 @@
+# ── Secrets — NEVER commit these ──────────────────────────────────────────
+.env
+gsheet_credentials.json
+*.json.key
+service_account*.json
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+venv/
+env/
+.venv/
+.env.local
+
+# ── Test output ────────────────────────────────────────────────────────────
+test_output/
+*.wav
+*.mp3
+
+# ── OS / Editor ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+*.log
+logs/
